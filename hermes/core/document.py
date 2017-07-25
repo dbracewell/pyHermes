@@ -61,7 +61,7 @@ class Document(HString):
     def previous_annotation(self, annotation: Annotation, annotation_type: str = None) -> 'Annotation':
         if not annotation_type:
             annotation_type = annotation.annotation_type
-        a = self.annotation(annotation_type, start=0, end=self.start)
+        a = self.annotation(annotation_type, start=-1, end=annotation.start)
         if len(a) == 0:
             return Annotation(None, 0, 0, annotation_type, [])
         return a[-1]

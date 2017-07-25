@@ -1,4 +1,4 @@
-from .hstring import *
+from .hstring import HString
 from .relation import Relation
 
 

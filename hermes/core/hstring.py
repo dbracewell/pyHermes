@@ -26,7 +26,7 @@ class HString(Span):
         self._attributes = defaultdict(return_none)
 
     def is_empty(self):
-        return len(self) == 0
+        return self.start == self.end
 
     def __len__(self):
         return len(self._document.content)

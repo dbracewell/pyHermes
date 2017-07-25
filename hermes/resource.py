@@ -284,7 +284,7 @@ class UrlResource(Resource):
 
 
 __resource_creator = {
-    "string:": lambda x: StringResource("" if x == "string:" else x[len("string:")]),
+    "string:": lambda x: StringResource("" if x == "string:" else x[len("string:"):]),
     "http:": lambda x: UrlResource(x),
     "https:": lambda x: UrlResource(x)
 }
