@@ -1,3 +1,4 @@
 from .formats import *
+from .corpus import Corpus
 
-__all__ = ['PlainTextFormat', 'JsonFormat', 'OnePerLine']
+__all__ = ['CorpusFormat', 'Corpus']

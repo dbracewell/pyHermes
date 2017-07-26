@@ -5,6 +5,8 @@ import urllib.request as request
 import urllib.parse as urlparse
 import zlib
 from os.path import splitext
+import pickle
+import fnmatch
 
 """
    Copyright 2017 David B. Bracewell
@@ -111,7 +113,7 @@ class Resource(object):
         """
         return ""
 
-    def children(self) -> List['Resource']:
+    def children(self, recursive: bool = False, pattern='*.*') -> List['Resource']:
         """
         :return: child resources
         """
@@ -151,6 +153,14 @@ class Resource(object):
         """
         pass
 
+    def write_object(self, object):
+        with self.writer({"mode": "wb"}) as w:
+            pickle.dump(object, w)
+
+    def read_object(self):
+        with self.reader({"mode": "rb"}) as r:
+            return pickle.load(r)
+
     def _mkparams(self, params: Dict[str, Any]):
         if params is None:
             return {}
@@ -176,8 +186,17 @@ class FileResource(Resource):
             return self._location.open(mode)
         return self._location.open(encoding=encoding)
 
-    def children(self) -> List['Resource']:
-        return [FileResource(x) for x in self._location.iterdir()]
+    def children(self, recursive: bool = False, pattern: str = '*.*') -> List['Resource']:
+        for f in self._location.iterdir():
+            try:
+                r = FileResource(f)
+                if recursive and r.is_dir():
+                    for cc in r.children(recursive):
+                        yield cc
+                elif fnmatch.fnmatch(r.path(), pattern):
+                    yield r
+            except OSError:
+                continue
 
     def writer(self, params=None):
         params = self._mkparams(params)
@@ -188,7 +207,7 @@ class FileResource(Resource):
         return self._location.open(mode, encoding=encoding)
 
     def path(self) -> str:
-        return self._location.absolute()
+        return str(self._location.absolute())
 
     def child(self, subpath: str) -> 'Resource':
         return FileResource(self._location / subpath)
@@ -235,6 +254,10 @@ class StringResource(Resource):
             self._buffer = writer.getvalue()
 
     def read(self, params=None) -> str:
+        if isinstance(self._buffer, bytes):
+            params = self._mkparams(params)
+            encoding = params["encoding"] if "encoding" in params else "utf-8"
+            return self._buffer.decode(encoding)
         return self._buffer
 
     def path(self) -> str:
@@ -242,6 +265,12 @@ class StringResource(Resource):
 
     def descriptor(self) -> str:
         return "string:{}".format(self._buffer)
+
+    def write_object(self, object):
+        self._buffer = pickle.dumps(object)
+
+    def read_object(self):
+        return pickle.loads(self._buffer)
 
 
 class UrlResource(Resource):
