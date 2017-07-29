@@ -4,7 +4,6 @@ from io import BufferedReader
 from collections import defaultdict
 import csv
 
-
 def csv_reader(stream: BufferedReader, one_per_line=False, language=ENGLISH, preprocessors=None, parameters=None):
     if parameters is None:
         parameters = {"id": 0, "content": 1}

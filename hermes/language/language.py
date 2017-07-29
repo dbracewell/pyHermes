@@ -65,14 +65,20 @@ class Language(object):
         import_module("hermes.language.{}".format(self.__code))
 
     def is_stopword(self, content):
+        if content is None:
+            return True
         is_hstr = getattr(content, 'pos', None)
         if is_hstr:
             pos = content.pos()
+            if not (any(c.isalpha() for c in content.content)):
+                return True
+            if content.lemma() == '-PRON-':
+                return True
             if not pos.is_a(Universal.UNKNOWN):
                 return not (pos.is_noun()
                             or pos.is_verb()
-                            or pos.is_a(Universal.ADJECTIVE)
-                            or pos.is_a(Universal.ADVERB))
+                            or pos.is_adjective()
+                            or pos.is_adverb())
             content = content.content
         return content in self.__stopwords \
                or content.lower() in self.__stopwords \

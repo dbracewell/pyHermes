@@ -37,7 +37,7 @@ class HString(Span):
 
     @property
     def content(self) -> str:
-        return self._document.content[self.start:self.end] if self._document else ""
+        return self._document.content[self.start:self.end] if self._document and not self.is_empty() else ""
 
     def __contains__(self, item) -> bool:
         return item in self._attributes
@@ -82,6 +82,14 @@ class HString(Span):
     def has(self, attribute):
         return attribute in self._attributes
 
+    @staticmethod
+    def union(*hstr):
+        if hstr:
+            start = min(hstr).start
+            end = max(hstr).end
+            return HString(hstr[0].document, start, end)
+        return HString(None, 0, 0)
+
     def lemma(self):
         if 'lemma' in self._attributes:
             return self['lemma']
@@ -97,6 +105,28 @@ class HString(Span):
         if LANGUAGE in self._attributes:
             return self._attributes[LANGUAGE]
         return self._document.language() if self._document else lng.UNKNOWN
+
+    def rstrip(self, stripper=lambda x: x.is_stopword()):
+        if self.is_empty():
+            return self
+        tkns = self.tokens()
+        for i in range(len(tkns) - 1, -1, -1):
+            if not stripper(tkns[i]):
+                return HString(self.document, tkns[0].start, tkns[i].end)
+        return HString(None, 0, 0)
+
+    def lstrip(self, stripper=lambda x: x.is_stopword()):
+        if self.is_empty():
+            return self
+        tkns = self.tokens()
+        for i in range(len(tkns)):
+            if not stripper(tkns[i]):
+                return HString(self.document, tkns[i].start, tkns[-1].end)
+        return HString(None, 0, 0)
+
+    def strip(self, stripper=lambda x: x.is_stopword()):
+        ls = self.lstrip(stripper)
+        return ls.rstrip(stripper) if len(ls.tokens()) > 1 else ls
 
     def find(self, string, start=0) -> 'HString':
         idx = self.content.find(string, start)

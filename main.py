@@ -3,16 +3,12 @@ import sys
 sys.path.append("/home/dbb/PycharmProjects/hermes-py/")
 from hermes.core import *
 from hermes.util import Timer
-from collections import Counter
 from hermes.corpus import Corpus
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.linear_model import SGDClassifier
-from sklearn.feature_extraction.text import BaseEstimator, TransformerMixin
-from sklearn.model_selection import train_test_split, ShuffleSplit
-import hermes.ml.featurizer as ml
+from sklearn.model_selection import train_test_split
 import logging
-from hermes.ml.features import BaseAnnotationExtractor, BinaryValueCalculator, NormalizedValueCalculator
+from hermes.ml.features import BaseAnnotationExtractor, NormalizedValueCalculator
 
 logging.basicConfig(level=logging.INFO)
 
@@ -260,20 +256,15 @@ timer = Timer(started=True)
 
 
 
-
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import PassiveAggressiveClassifier, SGDClassifier
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.neural_network import MLPClassifier
+from sklearn.linear_model import SGDClassifier
 
 pipeline = Pipeline([
     ("dict", DictVectorizer()),
-    ("clf", MLPClassifier(verbose=True))
+    ("clf", SGDClassifier())
 ])
 extractor = BaseAnnotationExtractor(value_calculator=NormalizedValueCalculator(), lemmatize=False, lowercase=True)
 X, Y = Corpus.disk("json_opl", source="/home/dbb/annotated.json").to_x_y(extractor, 'AUTHOR_AGE')
 train_X, test_X, train_Y, test_Y = train_test_split(X, Y, test_size=0.2, random_state=42)
-
 clf = pipeline.fit(train_X, train_Y)
 
 

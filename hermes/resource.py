@@ -234,6 +234,19 @@ class FileResource(Resource):
         return self.path()
 
 
+class StringIOWrapper(io.StringIO):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.bset = None
+
+    def set_buffer(self, buffer):
+        self.bset = buffer
+
+    def close(self, *args, **kwargs):
+        self.bset(self.getvalue())
+        return super().close(*args, **kwargs)
+
+
 class StringResource(Resource):
     """
     Wraps a string as a resource
@@ -245,8 +258,13 @@ class StringResource(Resource):
     def reader(self, params=None):
         return io.StringIO(self._buffer)
 
+    def __set_buffer(self, x):
+        self._buffer = x
+
     def writer(self, params=None):
-        return io.StringIO()
+        w = StringIOWrapper()
+        w.set_buffer(self.__set_buffer)
+        return w
 
     def write(self, content: str, params=None) -> None:
         with self.writer() as writer:
