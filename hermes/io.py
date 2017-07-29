@@ -5,27 +5,6 @@ from collections import defaultdict
 import csv
 
 
-def json_reader(stream: BufferedReader, one_per_line=False, language=ENGLISH, preprocessors=None, parameters=None):
-    with stream:
-        if one_per_line:
-            for line in stream:
-                if len(line.strip()) > 0:
-                    yield Document.from_json(line)
-        else:
-            Document.from_json(stream.read())
-
-
-def plain_text_reader(stream: BufferedReader, one_per_line=False, language=ENGLISH, preprocessors=None,
-                      parameters=None):
-    with stream:
-        if one_per_line:
-            for line in stream:
-                if len(line.strip()) > 0:
-                    yield Document(line.rstrip(), preprocessors=preprocessors, language=language)
-        else:
-            Document(stream.read().rstrip(), preprocessors=preprocessors, language=language)
-
-
 def csv_reader(stream: BufferedReader, one_per_line=False, language=ENGLISH, preprocessors=None, parameters=None):
     if parameters is None:
         parameters = {"id": 0, "content": 1}

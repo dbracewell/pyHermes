@@ -1,8 +1,11 @@
 import re
-from hermes.language import ENGLISH
-from hermes.core import Document
+
 from spacy.en import English as enlp
-from hermes.pos import PartOfSpeech
+from spacy.en import STOP_WORDS
+from nltk import RegexpChunkParser
+from hermes.core import Document
+from hermes.language import ENGLISH
+from hermes.tag.pos import PartOfSpeech
 
 """
    Copyright 2017 David B. Bracewell
@@ -21,18 +24,7 @@ from hermes.pos import PartOfSpeech
 """
 
 parser = enlp()
-
-
-# class SentenceSegmenter(object):
-#     def annotate(self, document: 'Document'):
-#         index = 0
-#         start = 0
-#         for sen in split_multi(document.content):
-#             start = document.content.index(sen, start)
-#             document.create_annotation('sentence', start, start + len(sen), [("index", index)])
-#             index += 1
-#             start = start + len(sen)
-
+ENGLISH.set_stopwords(STOP_WORDS)
 
 class SpacyAnnotator(object):
     def __init__(self):
@@ -57,6 +49,10 @@ class SpacyAnnotator(object):
             document.create_annotation("entity", entity.start_char, entity.end_char, [("entity_type", entity.label_)])
         for i, sentence in enumerate(parsed.sents):
             document.create_annotation("sentence", sentence.start_char, sentence.end_char, [("index", i)])
+        # for np in parsed.noun_chunks:
+        #     print(np)
+
+
 
 
 tokenizer = SpacyAnnotator()

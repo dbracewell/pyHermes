@@ -1,6 +1,6 @@
-from hermes.attributes import set_encoder
-from hermes.pos import PartOfSpeech
+from hermes.core.attributes import set_encoder
 from hermes.language import Language
+from hermes.tag.pos import PartOfSpeech
 
 """
    Copyright 2017 David B. Bracewell

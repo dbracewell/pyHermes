@@ -25,6 +25,15 @@ __nl_ws = re.compile("\n[ \t]")
 __html_entity = re.compile(r"&(?:(?:#\d+)|(?:\w+));")
 __html_tag = re.compile(r"<[^>]+>")
 
+
+class Preprocessors:
+    WHITESPACE = "whitespace"
+    NEWLINE = "newline"
+    HTML_ENTITY = "html_entity"
+    UNICODE = "unicode"
+    HTML_TAG = "html_tag"
+
+
 __preprocessors = {
     "whitespace": lambda x: __nl_ws.sub('\n', __ws.sub(' ', x.strip())),
     "newline": lambda x: __nl.sub('\n', x),

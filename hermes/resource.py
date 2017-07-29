@@ -155,11 +155,11 @@ class Resource(object):
 
     def write_object(self, object):
         with self.writer({"mode": "wb"}) as w:
-            pickle.dump(object, w)
+            w.write(zlib.compress(pickle.dumps(object)))
 
     def read_object(self):
         with self.reader({"mode": "rb"}) as r:
-            return pickle.load(r)
+            return pickle.load(zlib.decompress(r.read()))
 
     def _mkparams(self, params: Dict[str, Any]):
         if params is None:

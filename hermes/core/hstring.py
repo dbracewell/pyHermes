@@ -1,10 +1,11 @@
-from hermes.pos import PartOfSpeech
-from collections import defaultdict
-from .span import Span
-from hermes.types import TOKEN, PART_OF_SPEECH, LANGUAGE
 import re
-import hermes.language as lng
 import typing
+from collections import defaultdict
+
+import hermes.language as lng
+from hermes.tag.pos import PartOfSpeech
+from hermes.types import TOKEN, PART_OF_SPEECH, LANGUAGE
+from .span import Span
 
 
 def return_none():
@@ -77,6 +78,20 @@ class HString(Span):
 
     def __repr__(self) -> str:
         return self.content
+
+    def has(self, attribute):
+        return attribute in self._attributes
+
+    def lemma(self):
+        if 'lemma' in self._attributes:
+            return self['lemma']
+        tkn = self.tokens()
+        if len(tkn) == 0:
+            return self.lower()
+        return " ".join([t.lemma() for t in tkn])
+
+    def is_stopword(self) -> bool:
+        return self.language().is_stopword(self)
 
     def language(self) -> lng.Language:
         if LANGUAGE in self._attributes:

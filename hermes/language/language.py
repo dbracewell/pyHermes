@@ -1,4 +1,5 @@
 from importlib import import_module
+from hermes.tag import Universal
 
 """
    Copyright 2017 David B. Bracewell
@@ -24,6 +25,7 @@ class Language(object):
         self.__name = name.upper()
         self.__is_rtl = is_rtl
         self.__code = code.lower()
+        self.__stopwords = set([])
         if self.__name in _languages or self.__code in _languages:
             raise Exception("{0} is already defined".format(self.__name))
         _languages[self.__name] = self
@@ -60,7 +62,24 @@ class Language(object):
         return False
 
     def load(self):
-        import_module("hermes.{}".format(self.__code))
+        import_module("hermes.language.{}".format(self.__code))
+
+    def is_stopword(self, content):
+        is_hstr = getattr(content, 'pos', None)
+        if is_hstr:
+            pos = content.pos()
+            if not pos.is_a(Universal.UNKNOWN):
+                return not (pos.is_noun()
+                            or pos.is_verb()
+                            or pos.is_a(Universal.ADJECTIVE)
+                            or pos.is_a(Universal.ADVERB))
+            content = content.content
+        return content in self.__stopwords \
+               or content.lower() in self.__stopwords \
+               or content == '\t' \
+               or content == "'s" \
+               or content == "n't" \
+               or not any(c.isalpha() for c in content)
 
     @staticmethod
     def of(language):
@@ -68,6 +87,13 @@ class Language(object):
         if language in _languages:
             return _languages[language]
         return UNKNOWN
+
+    def set_stopwords(self, stopwords):
+        self.__stopwords = stopwords
+
+    @property
+    def stopwords(self):
+        return self.__stopwords
 
 
 UNKNOWN = Language("UNKNOWN", "unknown")

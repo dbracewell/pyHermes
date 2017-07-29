@@ -2,6 +2,7 @@ from .hstring import *
 from .annotation import *
 from .relation import *
 from .document import *
+from .preprocess import Preprocessors
 
 """
    Copyright 2017 David B. Bracewell
@@ -20,4 +21,4 @@ from .document import *
 """
 __author__ = 'David B. Bracewell'
 
-__all__ = ["Document", "Relation", "Annotation", "HString", "Span"]
+__all__ = ["Document", "Relation", "Annotation", "HString", "Span", "Preprocessors"]

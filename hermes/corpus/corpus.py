@@ -1,7 +1,11 @@
 from .formats import CorpusFormat
 from hermes.core import Document
 from hermes.resource import Resource
+import hermes.ml.featurizer as ml
 import typing
+import logging
+
+_logger = logging.getLogger("corpus")
 
 
 class Corpus:
@@ -25,6 +29,19 @@ class Corpus:
 
     def cache(self) -> 'Corpus':
         return self
+
+    def to_x_y(self, featurizer: ml.Extractor, label_attr=None):
+        x = []
+        y = []
+        cnt = 0
+        for doc in self:
+            x.append(featurizer.extract(doc))
+            if label_attr:
+                y.append(doc[label_attr])
+            cnt += 1
+            if cnt % 500 == 0:
+                _logger.info('Processed %s documents', cnt)
+        return x, y
 
 
 class MemoryCorpus(Corpus):

@@ -14,7 +14,7 @@ class Timer:
             raise Exception("Already started")
         self._start = datetime.now()
 
-    def end(self):
+    def stop(self):
         if not self._start:
             raise Exception("Not started")
         self._elapsed = (datetime.now() - self._start)

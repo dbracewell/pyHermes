@@ -3,10 +3,11 @@ from .relation import Relation
 
 
 class Annotation(HString):
-    def __init__(self, document, start: int, end: int, annotation_type: str, attributes=None):
+    def __init__(self, document, start: int, end: int, annotation_type: str, attributes=None, annotation_id=-1):
         super().__init__(document, start, end)
         self._type = annotation_type
         self._relations = []
+        self._id = annotation_id
         if attributes is None:
             attributes = []
         if isinstance(attributes, list):
@@ -37,11 +38,12 @@ class Annotation(HString):
         dd = {"type": self._type,
               "start": self.start,
               "end": self.end,
+              "id": self.annotation_id,
               "attributes": self.attributes}
         if len(self._relations) > 0:
-            dd["relations"] = [{"target": rel.target["id"], "type": rel.relation_type, "relation": rel.relation} for rel
-                               in
-                               self._relations]
+            dd["relations"] = [{"target": rel.target.annotation_id,
+                                "type": rel.relation_type,
+                                "value": rel.relation} for rel in self._relations]
         return dd
 
     @property
@@ -51,3 +53,7 @@ class Annotation(HString):
     @property
     def annotation_type(self):
         return self._type
+
+    @property
+    def annotation_id(self):
+        return self._id

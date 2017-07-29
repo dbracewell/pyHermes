@@ -1,14 +1,14 @@
-from collections import defaultdict
-from .hstring import HString
-from .annotation import Annotation
-import hermes.language as lng
-from intervaltree import IntervalTree
-from hermes.preprocess import preprocess
-from hermes.types import LANGUAGE
-from hermes.attributes import get_decoder
-from random import randint
-import typing
 import json
+import typing
+from collections import OrderedDict
+from random import randint
+import hermes.language as lng
+from hermes.core.attributes import get_decoder
+from hermes.core.preprocess import preprocess
+from hermes.types import LANGUAGE
+from .annotation import Annotation
+from .hstring import HString
+from quicksect import IntervalTree, Interval
 
 
 def rand_id(length: int = 10) -> str:
@@ -49,11 +49,15 @@ class Document(HString):
 
     def annotation(self, annotation_type, start=None, end=None) -> typing.List[Annotation]:
         annotation_type = annotation_type.lower()
-        if end is None or start is None:
-            anno_iter = self._annotations
-        else:
-            anno_iter = self._annotations[start:end]
-        return sorted([x.data for x in anno_iter if x.data.annotation_type.lower() == annotation_type])
+        try:
+            if end is None or start is None:
+                anno_iter = self._annotations.find(Interval(0, self.end))
+            else:
+                anno_iter = self._annotations.find(Interval(start, end))
+        except Exception:
+            return []
+        return sorted(
+            [x.data for x in anno_iter if x.data.annotation_type.lower() == annotation_type and x.data != self])
 
     def annotation_by_id(self, annotation_id: int):
         return self._aid_dict[annotation_id] if annotation_id in self._aid_dict else None
@@ -77,11 +81,12 @@ class Document(HString):
     def create_annotation(self, type: str, start: int, end: int, attributes=None) -> Annotation:
         if attributes is None:
             attributes = []
-        annotation = Annotation(self, start, end, type, attributes)
-        annotation["id"] = self._next_id
+        annotation = Annotation(self, start, end, type, attributes, self._next_id)
         self._next_id += 1
-        self._annotations[annotation.start:annotation.end] = annotation
-        self._aid_dict[annotation["id"]] = annotation
+        # self._annotations.addi(annotation.start, annotation.end, annotation)
+        self._annotations.add(annotation.start, annotation.end, annotation)
+        # self._annotations[annotation.start:annotation.end] = annotation
+        self._aid_dict[annotation.annotation_id] = annotation
         return annotation
 
     def annotate(self, *args):
@@ -109,20 +114,29 @@ class Document(HString):
             doc[k] = get_decoder(k)(v)
         if "annotations" in obj:
             for annotation in obj["annotations"]:
-                ann = doc.create_annotation(
+                ann = Annotation(
+                    document=doc,
                     start=annotation["start"],
                     end=annotation["end"],
-                    type=annotation["type"],
-                    attributes=[(k, get_decoder(k)(v)) for k, v in annotation["attributes"].items()]
+                    annotation_type=annotation["type"],
+                    attributes=[(k, get_decoder(k)(v)) for k, v in annotation["attributes"].items()],
+                    annotation_id=annotation["id"]
                 )
+                doc._annotations.add(ann.start, ann.end, ann)
                 if "relations" in obj["annotations"]:
                     for rel in obj["annotations"]:
-                        ann.add_relation(target=rel["target"], type=rel["type"], relation=rel["relation"])
+                        ann.add_relation(target=rel["target"], type=rel["type"], relation=rel["value"])
+        doc.language().load()
         return doc
 
     def to_json(self) -> str:
+        aout = []
+        try:
+            aout = self._annotations.find(0, self.length)
+        except Exception:
+            aout = []
         return json.dumps(OrderedDict([("id", self._doc_id),
                                        ("content", self.content),
                                        ("attributes", self._attributes),
-                                       ("annotations", [x.data.as_dict() for x in self._annotations])]),
-                          default=default)
+                                       ("annotations", [a.as_dict() for a in aout])],
+                                      default=default))
