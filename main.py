@@ -2,14 +2,74 @@ import sys
 
 sys.path.append("/home/dbb/PycharmProjects/hermes-py/")
 from hermes.core import *
-from hermes.util import Timer
 from hermes.corpus import Corpus
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.model_selection import train_test_split
 import logging
 from hermes.ml.features import BaseAnnotationExtractor, NormalizedValueCalculator
+import numpy
+import keras.preprocessing.text as tp
+from keras.utils import np_utils
+from keras.models import Sequential
+from keras.layers.core import Dense, Activation, Dropout
+from keras.layers.convolutional import Conv1D
+from keras.layers.recurrent import LSTM
 
+filename = '/home/dbb/wonderland.txt'
+raw_text = open(filename).read().lower()
+chars = sorted(list(set(raw_text)))
+char_to_int = dict((c, i) for i, c in enumerate(chars))
+
+n_chars = len(raw_text)
+n_vocab = len(chars)
+print("Total Characters: ", n_chars)
+print("Total Vocab: ", n_vocab)
+# prepare the dataset of input to output pairs encoded as integers
+seq_length = 10
+dataX = []
+dataY = []
+for i in range(0, n_chars - seq_length, 1):
+    seq_in = raw_text[i:i + seq_length]
+    seq_out = raw_text[i + seq_length]
+    dataX.append([char_to_int[char] for char in seq_in])
+    dataY.append(char_to_int[seq_out])
+n_patterns = len(dataX)
+print("Total Patterns: ", n_patterns)
+
+# reshape X to be [samples, time steps, features]
+X = numpy.reshape(dataX, (n_patterns, seq_length, 1))
+# normalize
+X = X / float(n_vocab)
+# one hot encode the output variable
+y = np_utils.to_categorical(dataY)
+
+# define the LSTM model
+model = Sequential()
+model.add(LSTM(256, input_shape=(X.shape[1], X.shape[2])))
+model.add(Dropout(0.2))
+model.add(Dense(y.shape[1], activation='softmax'))
+model.compile(loss='categorical_crossentropy', optimizer='adam')
+model.fit(X, y, epochs=5, batch_size=128)
+
+int_to_char = dict((i, c) for i, c in enumerate(chars))
+# pick a random seed
+start = numpy.random.randint(0, len(dataX) - 1)
+pattern = dataX[start]
+print("Seed:")
+# generate characters
+for i in range(1000):
+    x = numpy.reshape(pattern, (1, len(pattern), 1))
+    x = x / float(n_vocab)
+    prediction = model.predict(x, verbose=0)
+    index = numpy.argmax(prediction)
+    result = int_to_char[index]
+    seq_in = [int_to_char[value] for value in pattern]
+    sys.stdout.write(result)
+    pattern.append(index)
+    pattern = pattern[1:len(pattern)]
+print("\nDone.")
+exit(0)
 logging.basicConfig(level=logging.INFO)
 
 # # def get_tokens(hstr: HString):
@@ -41,14 +101,16 @@ logging.basicConfig(level=logging.INFO)
 # from hermes.util import Timer
 # import json
 #
-# timer = Timer(started=True)
-#
-# # with open("/home/dbb/annotated.json", "w") as writer:
-# #     for document in Corpus.disk("json_opl", source="/home/dbb/corpus/training_data/demographics/corpus.json"):
-# #         document.annotate("token")
-# #         writer.write(document.to_json() + "\n")
-# #
-# # exit(0)
+from hermes.util import Timer
+
+timer = Timer(started=True)
+# with open("/home/dbb/annotated.json", "w") as writer:
+#     for document in Corpus.disk("json_opl", source="/home/dbb/corpus/training_data/demographics/corpus.json"):
+#         document.annotate("token")
+#         writer.write(document.to_json() + "\n")
+# print(timer)
+# exit(0)
+
 #
 # doc_list = []
 # for dd in Corpus.disk("json_opl", "/home/dbb/annotated.json").generator():
@@ -242,30 +304,44 @@ logging.basicConfig(level=logging.INFO)
 # #
 # # exit(0)
 
-timer = Timer(started=True)
-
-# cnt = 0
-# X = []
-# Y = []
-# for document in Corpus.disk("json_opl", source="/home/dbb/annotated.json"):
-#     X.append(document)
-#     Y.append(document["AUTHOR_AGE"])
-#     cnt += 1
-#     if cnt % 10000 == 0:
-#         print("{} processed in {}".format(cnt, timer))
-
-
-
 from sklearn.linear_model import SGDClassifier
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 
 pipeline = Pipeline([
     ("dict", DictVectorizer()),
-    ("clf", SGDClassifier())
+    ("clf", SGDClassifier(loss='modified_huber'))
 ])
 extractor = BaseAnnotationExtractor(value_calculator=NormalizedValueCalculator(), lemmatize=False, lowercase=True)
-X, Y = Corpus.disk("json_opl", source="/home/dbb/annotated.json").to_x_y(extractor, 'AUTHOR_AGE')
+X, Y = Corpus.disk("json_opl", source="/home/dbb/train.json").to_x_y(extractor, 'AUTHOR_AGE')
 train_X, test_X, train_Y, test_Y = train_test_split(X, Y, test_size=0.2, random_state=42)
-clf = pipeline.fit(train_X, train_Y)
+v = DictVectorizer(sparse=False)
+o = LabelEncoder()
+train_X = v.fit_transform(train_X)
+train_Y = np_utils.to_categorical(o.fit_transform(train_Y), num_classes=4)
+
+dim = len(v.vocabulary_)
+nb_classes = len(train_Y[0])
+
+model = Sequential()
+# model.add(Dense(400, activation='relu', input_dim=dim))
+model.add(Conv1D(50, input_shape=(None, 39243), kernel_size=128))
+model.add(Dropout(0.5))
+# model.add(Dense(200, activation='relu'))
+# model.add(Dropout(0.5))
+model.add(Dense(4, activation='linear'))
+model.add(Activation('softmax'))
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+test_X = v.transform(test_X)
+test_Y = np_utils.to_categorical(o.transform(test_Y), num_classes=4)
+model.fit(train_X, train_Y, epochs=5)
+import numpy as np
+
+pred_y = [o.inverse_transform(np.argmax(y)) for y in model.predict(test_X)]
+test_Y = [o.inverse_transform(np.argmax(y)) for y in test_Y]
+
+
+# exit(0)
+# clf = pipeline.fit(train_X, train_Y)
 
 
 def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
@@ -294,15 +370,15 @@ def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=
 
 from sklearn.metrics import classification_report, confusion_matrix
 
-pred_Y = clf.predict(test_X)
+# pred_Y = clf.predict(test_X)
 
-print_cm(confusion_matrix(test_Y, pred_Y, labels=clf.classes_), labels=clf.classes_)
-print(classification_report(test_Y, pred_Y, target_names=clf.classes_))
-
-test_doc = Document("My kids loved the movie, but I thought it was hysterical.")
-test_doc.annotate("token")
-print(clf.predict([extractor.extract(test_doc)]))
-
-test_doc = Document("I bought it for my granddaughter and she just loved it!")
-test_doc.annotate("token")
-print(clf.predict([extractor.extract(test_doc)]))
+print_cm(confusion_matrix(test_Y, pred_y, labels=o.classes_), labels=o.classes_)
+print(classification_report(test_Y, pred_y, target_names=o.classes_))
+#
+# test_doc = Document("My kids loved the movie, but I thought it was hysterical.")
+# test_doc.annotate("token")
+# print(clf.predict([extractor.extract(test_doc)]))
+#
+# test_doc = Document("I bought it for my granddaughter and she just loved it!")
+# test_doc.annotate("token")
+# print(clf.predict([extractor.extract(test_doc)]))

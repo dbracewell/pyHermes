@@ -48,6 +48,8 @@ class HString(Span):
         :param attribute: The attribute whose value should be returned
         :return: The value of the attribute or None if the attribute is not present
         """
+        if isinstance(attribute, slice):
+            return HString(self, attribute.start, attribute.stop)
         if attribute in self._attributes:
             return self._attributes[attribute]
         return None
@@ -89,6 +91,9 @@ class HString(Span):
             end = max(hstr).end
             return HString(hstr[0].document, start, end)
         return HString(None, 0, 0)
+
+    def token_length(self):
+        return len(self.tokens())
 
     def lemma(self):
         if 'lemma' in self._attributes:

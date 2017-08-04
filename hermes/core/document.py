@@ -1,6 +1,6 @@
 import json
 import typing
-from collections import OrderedDict
+from .span import Span
 from random import randint
 import hermes.language as lng
 from hermes.core.attributes import get_decoder
@@ -34,7 +34,7 @@ class Document(HString):
         self._content = preprocess(content, preprocessors) if preprocessors else content
         self._annotations = IntervalTree()
         self._doc_id = rand_id(10) if doc_id is None else doc_id
-        self._completed = set()
+        self._completed = {}
         self._next_id = 0
         self[LANGUAGE] = language
         self._aid_dict = {}
@@ -48,16 +48,19 @@ class Document(HString):
         return self._doc_id
 
     def annotation(self, annotation_type, start=None, end=None) -> typing.List[Annotation]:
-        annotation_type = annotation_type.lower()
         try:
             if end is None or start is None:
                 anno_iter = self._annotations.find(Interval(0, self.end))
             else:
-                anno_iter = self._annotations.find(Interval(start, end))
+                anno_iter = filter(lambda x: x.data.overlaps(Span(start, end))
+                                   , self._annotations.find(Interval(start, end)))
         except Exception:
             return []
-        return sorted(
-            [x.data for x in anno_iter if x.data.annotation_type.lower() == annotation_type and x.data != self])
+        if annotation_type:
+            annotation_type = annotation_type.lower()
+            return sorted(
+                [x.data for x in anno_iter if x.data.annotation_type.lower() == annotation_type and x.data != self])
+        return sorted([x.data for x in anno_iter if x.data != self])
 
     def annotation_by_id(self, annotation_id: int):
         return self._aid_dict[annotation_id] if annotation_id in self._aid_dict else None
@@ -97,7 +100,7 @@ class Document(HString):
             annotator = self.language().get_annotator(arg)
             if annotator:
                 annotator.annotate(self)
-                self._completed.add(arg)
+                self._completed[arg] = '1.0'
             else:
                 raise Exception("No annotator for {} annotations in {}".format(arg, self.language()))
 
@@ -110,8 +113,13 @@ class Document(HString):
     def from_json(json_str):
         obj = json.loads(json_str)
         doc = Document(obj["content"], doc_id=obj["id"])
-        for (k, v) in obj["attributes"].items():
-            doc[k] = get_decoder(k)(v)
+        if 'attributes' in obj:
+            for (k, v) in obj["attributes"].items():
+                doc[k] = get_decoder(k)(v)
+        if 'completed' in obj:
+            for (k, v) in obj['completed'].items():
+                doc._completed[k] = v
+        max_id = -1
         if "annotations" in obj:
             for annotation in obj["annotations"]:
                 ann = Annotation(
@@ -122,21 +130,19 @@ class Document(HString):
                     attributes=[(k, get_decoder(k)(v)) for k, v in annotation["attributes"].items()],
                     annotation_id=annotation["id"]
                 )
+                max_id = max(max_id, ann.annotation_id)
                 doc._annotations.add(ann.start, ann.end, ann)
                 if "relations" in obj["annotations"]:
                     for rel in obj["annotations"]:
                         ann.add_relation(target=rel["target"], type=rel["type"], relation=rel["value"])
         doc.language().load()
+        doc._next_id = max_id + 1
         return doc
 
     def to_json(self) -> str:
-        aout = []
-        try:
-            aout = self._annotations.find(0, self.length)
-        except Exception:
-            aout = []
-        return json.dumps(OrderedDict([("id", self._doc_id),
-                                       ("content", self.content),
-                                       ("attributes", self._attributes),
-                                       ("annotations", [a.as_dict() for a in aout])],
-                                      default=default))
+        return json.dumps(dict([("id", self._doc_id),
+                                ("content", self.content),
+                                ("attributes", self._attributes),
+                                ("completed", self._completed),
+                                ("annotations", [a.as_dict() for a in self.annotation(annotation_type=None)])]),
+                          default=default)

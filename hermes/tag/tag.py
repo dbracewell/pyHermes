@@ -2,10 +2,11 @@ class Tag:
     def __init__(self, parent: 'Tag' = None):
         self._parent = parent
 
-    def is_a(self, other: 'Tag'):
+    def is_a(self, other: [str, 'Tag']):
         me = self
+        target = other.upper() if isinstance(other, str) else other.name
         while me is not None:
-            if me.name == other.name:
+            if me.name == target:
                 return True
             me = me.parent
         return False

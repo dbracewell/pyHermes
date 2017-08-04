@@ -17,6 +17,11 @@ class Annotation(HString):
             for k, v in attributes.items():
                 self[k] = v
 
+    def tokens(self):
+        if self._type == 'token':
+            return [self]
+        return super().tokens()
+
     def head(self) -> 'Annotation':
         rel = next(filter(lambda x: x.relation_type == 'dep', self._relations), None)
         if rel:
