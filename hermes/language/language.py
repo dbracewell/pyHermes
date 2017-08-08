@@ -62,13 +62,15 @@ class Language(object):
         return False
 
     def load(self):
-        import_module("hermes.language.{}".format(self.__code))
+        import_module("hermes.language.%s" % self.__code)
 
     def is_stopword(self, content):
         if content is None:
             return True
-        is_hstr = getattr(content, 'pos', None)
+        lemma = content.lower()
+        is_hstr = getattr(content, 'lemma', None)
         if is_hstr:
+            lemma = content.lemma()
             pos = content.pos()
             if not (any(c.isalpha() for c in content.content)):
                 return True
@@ -78,10 +80,14 @@ class Language(object):
                 return not (pos.is_noun()
                             or pos.is_verb()
                             or pos.is_adjective()
-                            or pos.is_adverb())
+                            or pos.is_adverb()) \
+                            or content.lemma() in self.__stopwords \
+                            or content.lower in self.__stopwords
             content = content.content
+
         return content in self.__stopwords \
                or content.lower() in self.__stopwords \
+               or lemma in self.__stopwords \
                or content == '\t' \
                or content == "'s" \
                or content == "n't" \

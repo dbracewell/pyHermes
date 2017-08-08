@@ -77,6 +77,7 @@ def __make_expression(expressions, position, stack):
         position += 1
         terminated = False
         stack_start = len(stack)
+
         while position < len(expressions):
             position = __make_expression(expressions, position, stack)
             if stack[-1] == ')':
@@ -87,14 +88,14 @@ def __make_expression(expressions, position, stack):
         if not terminated:
             raise Exception('Non terminated parenthesis near %s' % stack[stack_start:])
 
-        group = stack[stack_start:]
+        group = [stack[x] for x in range(stack_start, len(stack), 1)]
         if name:
             grouped_exp = GroupTransition(group, name)
         else:
             grouped_exp = SequenceTransition(group)
 
-        for i in range(stack_start, len(stack)):
-            del stack[-1]
+        while len(stack) > stack_start:
+            stack.pop()
         stack.append(grouped_exp)
         return position
 
@@ -113,7 +114,8 @@ def __make_expression(expressions, position, stack):
 
 
 def compile(pattern: str):
-    stack = []
+    from collections import deque
+    stack = deque()
     expressions = list(__lexer.finditer(pattern))
     position = 0
     while position < len(expressions):

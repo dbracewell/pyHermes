@@ -23,7 +23,10 @@ from hermes.tag.pos import PartOfSpeech, PennTreebank
 """
 
 parser = enlp()
-ENGLISH.set_stopwords(STOP_WORDS)
+stopwords = set(STOP_WORDS)
+for sw in ['say', 'have', 'get', 'good', '\'s', 'Mr', 'be', 'said', 'says', 'saying']:
+    stopwords.add(sw)
+ENGLISH.set_stopwords(stopwords)
 
 
 class SpacyAnnotator(object):

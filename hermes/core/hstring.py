@@ -25,6 +25,7 @@ class HString(Span):
         super(HString, self).__init__(start, end)
         self._document = document
         self._attributes = defaultdict(return_none)
+        self._tokens = []
 
     def is_empty(self):
         return self.start == self.end
@@ -62,7 +63,8 @@ class HString(Span):
         :return: None
         """
         if value is None:
-            del self._attributes[attribute]
+            if attribute in self._attributes:
+                del self._attributes[attribute]
         else:
             self._attributes[attribute] = value
 
@@ -114,19 +116,17 @@ class HString(Span):
     def rstrip(self, stripper=lambda x: x.is_stopword()):
         if self.is_empty():
             return self
-        tkns = self.tokens()
-        for i in range(len(tkns) - 1, -1, -1):
-            if not stripper(tkns[i]):
-                return HString(self.document, tkns[0].start, tkns[i].end)
+        for tkn in reversed(self.tokens()):
+            if not stripper(tkn):
+                return HString(self.document, self.start, tkn.end)
         return HString(None, 0, 0)
 
     def lstrip(self, stripper=lambda x: x.is_stopword()):
         if self.is_empty():
             return self
-        tkns = self.tokens()
-        for i in range(len(tkns)):
-            if not stripper(tkns[i]):
-                return HString(self.document, tkns[i].start, tkns[-1].end)
+        for tkn in self.tokens():
+            if not stripper(tkn):
+                return HString(self.document, tkn.start, self.end)
         return HString(None, 0, 0)
 
     def strip(self, stripper=lambda x: x.is_stopword()):
@@ -158,12 +158,12 @@ class HString(Span):
 
     def pos(self) -> PartOfSpeech:
         p = self[PART_OF_SPEECH]
-        if p is None:
-            return PartOfSpeech.guess(self)
-        return p
+        return p if p else PartOfSpeech.guess(self)
 
     def tokens(self) -> typing.List['Annotation']:
-        return self.annotation(TOKEN)
+        if not self._tokens:
+            self._tokens = self.annotation(TOKEN)
+        return self._tokens
 
     @property
     def attributes(self) -> typing.Dict[str, typing.Any]:
