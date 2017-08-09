@@ -1,6 +1,7 @@
 from hermes.core.attributes import set_encoder
 from hermes.language import Language
 from hermes.tag.pos import PartOfSpeech
+import hermes.types as htypes
 
 """
    Copyright 2017 David B. Bracewell
@@ -19,5 +20,5 @@ from hermes.tag.pos import PartOfSpeech
 """
 __author__ = 'David B. Bracewell'
 
-set_encoder("pos", lambda x: PartOfSpeech.of(x))
-set_encoder("language", lambda x: Language.of(x))
+set_encoder(htypes.PART_OF_SPEECH, lambda x: PartOfSpeech.of(x))
+set_encoder(htypes.LANGUAGE, lambda x: Language.of(x))

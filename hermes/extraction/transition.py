@@ -1,5 +1,5 @@
 from .nfa import NFA, Transition
-
+from hermes.types import PART_OF_SPEECH
 
 class StopWordTransition(Transition):
     def matches(self, hStr) -> int:
@@ -25,8 +25,8 @@ class TagTransition(Transition):
 
     def matches(self, hStr) -> int:
         tl = hStr.token_length()
-        if 'pos' in hStr:
-            return tl if hStr['pos'].is_a(self.__to_match) else 0
+        if PART_OF_SPEECH in hStr:
+            return tl if hStr[PART_OF_SPEECH].is_a(self.__to_match) else 0
         elif 'tag' in hStr:
             return tl if hStr['tag'] == self.__to_match else 0
         return 0

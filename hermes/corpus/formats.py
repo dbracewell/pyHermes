@@ -30,6 +30,24 @@ class CorpusFormat:
         else:
             yield self._convert(content=r.read(params), language=language, preprocessors=preprocessors, params=params)
 
+    def size(self, source: [str, Resource], params=None) -> int:
+        r = resource(source)
+        params = to_lower(params)
+        pattern = params["pattern"] if "pattern" in params else '*.*'
+        recursive = params["recursive"] if "recursive" in params else True
+        size = 0
+        if r.is_dir():
+            for d in r.children(recursive=recursive, pattern=pattern):
+                if not d.is_dir():
+                    size += self._size(r, params)
+        else:
+            size += self._size(r, params)
+
+        return size
+
+    def _size(self, resource, params):
+        return 1
+
     def _convert(self, content: str, language, preprocessors, params) -> Document:
         raise NotImplementedError
 
@@ -37,6 +55,14 @@ class CorpusFormat:
 class OnePerLine(CorpusFormat):
     def __init__(self, wrapped: CorpusFormat):
         self._sub = wrapped
+
+    def _size(self, resource, params):
+        size = 0
+        with resource.reader(params) as rdr:
+            for line in rdr:
+                if len(line.rstrip()) > 0:
+                    size += 1
+        return size
 
     def read(self, source: [str, Resource], preprocessors=None, params=None) -> typing.Generator[Document, None, None]:
         r = resource(source)

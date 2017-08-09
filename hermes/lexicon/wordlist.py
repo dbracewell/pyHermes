@@ -1,6 +1,7 @@
 import pygtrie as trie
 import hermes.resource as res
 from hermes.core import HString
+from hermes.types import PART_OF_SPEECH
 
 
 class WordList:
@@ -11,7 +12,7 @@ class WordList:
         raise NotImplementedError
 
     def _convert(self, content):
-        is_hstr = getattr(content, 'pos', None)
+        is_hstr = getattr(content, PART_OF_SPEECH, None)
         if is_hstr:
             if self._do_lower:
                 return content.lemma()

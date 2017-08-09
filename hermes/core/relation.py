@@ -1,4 +1,3 @@
-
 class Relation(object):
     def __init__(self, document, source: int, target: int, relation: str, relation_type: str):
         self._document = document

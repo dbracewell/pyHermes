@@ -1,7 +1,8 @@
 from .timer import Timer
+from .funcs import compose
 import typing
 
-__all__ = ["Timer"]
+__all__ = ["Timer", "compose"]
 
 
 def to_lower(d: typing.Dict[str, typing.Any]):

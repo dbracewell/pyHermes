@@ -14,6 +14,7 @@
    limitations under the License.
 """
 from .tag import Tag
+from hermes.types import PART_OF_SPEECH
 
 _lookup = {}
 
@@ -67,8 +68,11 @@ class PartOfSpeech(Tag):
     def guess(hs: 'HString'):
         if hs is None:
             return Universal.UNKNOWN
-        if hs.has('pos'):
-            return hs['pos']
+        if hs.has(PART_OF_SPEECH):
+            return hs[PART_OF_SPEECH]
+        if getattr(hs, 'annotation_type', None):
+            if hs.annotation_type == 'token':
+                return Universal.UNKNOWN
         hs = hs.head()
         return hs.pos()
 

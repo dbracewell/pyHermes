@@ -16,9 +16,11 @@
 
 LANGUAGE = "language"
 INDEX = "index"
-PART_OF_SPEECH = "pos"
+PART_OF_SPEECH = "part_of_speech"
 ENTITY_TYPE = "entity_type"
+LEMMA = "lemma"
 
 TOKEN = "token"
 ENTITY = "entity"
 SENTENCE = "sentence"
+PHRASE_CHUNK = "phrase_chunk"

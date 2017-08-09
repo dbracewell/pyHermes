@@ -1,14 +1,31 @@
 import json
 import typing
-from .span import Span
+from intervaltree import Interval, IntervalTree
 from random import randint
+
 import hermes.language as lng
 from hermes.core.attributes import get_decoder
 from hermes.core.preprocess import preprocess
 from hermes.types import LANGUAGE
 from .annotation import Annotation
 from .hstring import HString
-from quicksect import IntervalTree, Interval
+from .span import Span
+
+"""
+   Copyright 2017 David B. Bracewell
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+"""
 
 
 def rand_id(length: int = 10) -> str:
@@ -50,11 +67,11 @@ class Document(HString):
     def annotation(self, annotation_type, start=None, end=None) -> typing.List[Annotation]:
         try:
             if end is None or start is None:
-                anno_iter = self._annotations.find(Interval(0, self.end))
+                anno_iter = self._annotations
             else:
                 anno_iter = filter(lambda x: x.data.overlaps(Span(start, end))
-                                   , self._annotations.find(Interval(start, end)))
-        except Exception:
+                                   , self._annotations[start:end])
+        except:
             return []
         if annotation_type:
             annotation_type = annotation_type.lower()
@@ -87,7 +104,7 @@ class Document(HString):
         annotation = Annotation(self, start, end, type, attributes, self._next_id)
         self._next_id += 1
         # self._annotations.addi(annotation.start, annotation.end, annotation)
-        self._annotations.add(annotation.start, annotation.end, annotation)
+        self._annotations.add(Interval(annotation.start, annotation.end, annotation))
         # self._annotations[annotation.start:annotation.end] = annotation
         self._aid_dict[annotation.annotation_id] = annotation
         return annotation
@@ -131,7 +148,7 @@ class Document(HString):
                     annotation_id=annotation["id"]
                 )
                 max_id = max(max_id, ann.annotation_id)
-                doc._annotations.add(ann.start, ann.end, ann)
+                doc._annotations.add(Interval(ann.start, ann.end, ann))
                 if "relations" in obj["annotations"]:
                     for rel in obj["annotations"]:
                         ann.add_relation(target=rel["target"], type=rel["type"], relation=rel["value"])
@@ -146,3 +163,10 @@ class Document(HString):
                                 ("completed", self._completed),
                                 ("annotations", [a.as_dict() for a in self.annotation(annotation_type=None)])]),
                           default=default)
+
+    def to_dict(self) -> typing.Dict[str, typing.Any]:
+        return dict([("id", self._doc_id),
+                     ("content", self.content),
+                     ("attributes", self._attributes),
+                     ("completed", self._completed),
+                     ("annotations", [a.as_dict() for a in self.annotation(annotation_type=None)])])

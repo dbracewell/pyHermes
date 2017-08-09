@@ -24,6 +24,9 @@ class Corpus:
         for doc in self.generator():
             yield doc
 
+    def __len__(self):
+        return 0
+
     def generator(self) -> typing.Generator[Document, None, None]:
         raise NotImplementedError
 
@@ -53,8 +56,15 @@ class MemoryCorpus(Corpus):
         for doc in self.docs:
             yield doc
 
+    def __len__(self):
+        return len(self.docs)
+
 
 class FileCorpus(Corpus):
+    def __init__(self, fmt: [str, CorpusFormat], source: [str, Resource] = None, preprocessors=None,
+                 params=None):
+        super().__init__(fmt, source=source, preprocessors=preprocessors, params=params)
+
     def generator(self) -> typing.Generator[Document, None, None]:
         return self._fmt.read(source=self._source, preprocessors=self._preprocessors, params=self._params)
 
@@ -63,3 +73,6 @@ class FileCorpus(Corpus):
         for doc in self:
             mem.docs.append(doc)
         return mem
+
+    def __len__(self):
+        return self._fmt.size(self._source, self._params)
