@@ -95,6 +95,8 @@ class Language(object):
 
     @staticmethod
     def of(language):
+        if isinstance(language, Language):
+            return language
         language = language.upper()
         if language in _languages:
             return _languages[language]

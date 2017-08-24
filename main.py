@@ -12,7 +12,8 @@ from sklearn.model_selection import train_test_split
 from hermes.corpus import Corpus
 from hermes.ml.evaluation import evaluate_model
 import gensim
-from hermes.ml.features import Extractor
+from hermes.ml.features import Extractor, NormalizedValueCalculator, BaseAnnotationExtractor, BinaryValueCalculator
+from keras.optimizers import SGD
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
@@ -25,28 +26,26 @@ from sklearn.ensemble import RandomForestClassifier
 # lda_model = gensim.models.LdaModel(corpus=texts, id2word=dictionary, alpha='auto')
 # lda_model.save('lda.model')
 #
-lda_model = gensim.models.LdaModel.load('lda.model')
+# lda_model = gensim.models.LdaModel.load('lda.model')
 pipeline = Pipeline([
     # ("dict", DictVectorizer()),
     ("clf", RandomForestClassifier(n_estimators=100))
 ])
 
+extractor = BaseAnnotationExtractor(value_calculator=BinaryValueCalculator(), lemmatize=False, lowercase=True)
+X, Y = Corpus.disk("json_opl", source="/home/dbb/annotated2.json_opl").to_x_y(extractor, 'AUTHOR_AGE')
 
-# extractor = BaseAnnotationExtractor(value_calculator=NormalizedValueCalculator(), lemmatize=False, lowercase=True)
-# X, Y = Corpus.disk("json_opl", source="/home/dbb/train.json").to_x_y(extractor, 'AUTHOR_AGE')
-
-
-class ldaExtractor(Extractor):
-    def extract(self, hstr):
-        lemmas = [t.lemma() for t in hstr.tokens() if not t.is_stopword()]
-        bow = lda_model.id2word.doc2bow(lemmas)
-        vec = np.zeros(100)
-        for topic, score in lda_model[bow]:
-            vec[topic] = score
-        return vec
+# class ldaExtractor(Extractor):
+#     def extract(self, hstr):
+#         lemmas = [t.lemma() for t in hstr.tokens() if not t.is_stopword()]
+#         bow = lda_model.id2word.doc2bow(lemmas)
+#         vec = np.zeros(100)
+#         for topic, score in lda_model[bow]:
+#             vec[topic] = score
+#         return vec
 
 
-X, Y = Corpus.disk("json_opl", source="/home/dbb/annotated.json").to_x_y(ldaExtractor(), 'AUTHOR_AGE')
+# X, Y = Corpus.disk("json_opl", source="/home/dbb/annotated.json").to_x_y(ldaExtractor(), 'AUTHOR_AGE')
 train_X, test_X, train_Y, test_Y = train_test_split(X, Y, test_size=0.2, random_state=42)
 # clf = pipeline.fit(train_X, train_Y)
 # pred_y = clf.predict(test_X)
@@ -65,23 +64,21 @@ v = DictVectorizer(sparse=False)
 o = LabelEncoder()
 # train_X = v.fit_transform(train_X)
 
+train_X = v.fit_transform(train_X)
 train_Y = np_utils.to_categorical(o.fit_transform(train_Y), num_classes=4)
 nb_classes = len(train_Y[0])
 
 model = Sequential()
-model.add(Dense(500, activation='sigmoid', input_shape=(100,)))
-model.add(Dropout(0.5))
-model.add(Dense(200, activation='sigmoid'))
-model.add(Dropout(0.5))
+model.add(Dense(300, activation='sigmoid', input_shape=(len(v.vocabulary_),)))
+model.add(Dropout(0.2))
 model.add(Dense(4, activation='linear'))
 model.add(Activation('softmax'))
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-# test_X = v.transform(test_X)
-test_Y = np_utils.to_categorical(o.transform(test_Y), num_classes=4)
+model.compile(optimizer="sgd", loss='categorical_crossentropy', metrics=['accuracy'])
 
-train_X = np.array(train_X)
-test_X = np.array(test_X)
-model.fit(train_X, train_Y, epochs=300)
+model.fit(train_X, train_Y, epochs=20)
+
+test_X = v.transform(test_X)
+test_Y = np_utils.to_categorical(o.transform(test_Y), num_classes=4)
 
 pred_y = [o.inverse_transform(np.argmax(y)) for y in model.predict(test_X)]
 test_Y = [o.inverse_transform(np.argmax(y)) for y in test_Y]

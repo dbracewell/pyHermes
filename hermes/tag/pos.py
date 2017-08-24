@@ -78,6 +78,8 @@ class PartOfSpeech(Tag):
 
     @staticmethod
     def of(tag):
+        if isinstance(tag, PartOfSpeech):
+            return tag
         tag = tag.upper()
         if tag in _lookup:
             return _lookup[tag]

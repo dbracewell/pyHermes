@@ -1,8 +1,7 @@
 import json
 import typing
-from intervaltree import Interval, IntervalTree
+from quicksect import Interval, IntervalTree
 from random import randint
-
 import hermes.language as lng
 from hermes.core.attributes import get_decoder
 from hermes.core.preprocess import preprocess
@@ -67,10 +66,10 @@ class Document(HString):
     def annotation(self, annotation_type, start=None, end=None) -> typing.List[Annotation]:
         try:
             if end is None or start is None:
-                anno_iter = self._annotations
+                anno_iter = self._annotations.find(Interval(0, self.end))
             else:
                 anno_iter = filter(lambda x: x.data.overlaps(Span(start, end))
-                                   , self._annotations[start:end])
+                                   , self._annotations.find(Interval(start, end)))
         except:
             return []
         if annotation_type:
@@ -103,9 +102,7 @@ class Document(HString):
             attributes = []
         annotation = Annotation(self, start, end, type, attributes, self._next_id)
         self._next_id += 1
-        # self._annotations.addi(annotation.start, annotation.end, annotation)
-        self._annotations.add(Interval(annotation.start, annotation.end, annotation))
-        # self._annotations[annotation.start:annotation.end] = annotation
+        self._annotations.insert(Interval(annotation.start, annotation.end, annotation))
         self._aid_dict[annotation.annotation_id] = annotation
         return annotation
 
@@ -128,19 +125,31 @@ class Document(HString):
 
     @staticmethod
     def from_json(json_str):
-        obj = json.loads(json_str)
-        doc = Document(obj["content"], doc_id=obj["id"])
+        doc = Document(content='')
+        doc.__read_json(json.loads(json_str))
+        return doc
+
+    def __getstate__(self):
+        return self.to_dict()
+
+    def __setstate__(self, state):
+        self.__read_json(state)
+
+    def __read_json(self, obj):
+        self.__init__(content=obj['content'])
+        if "id" in obj:
+            self._doc_id = obj["id"]
         if 'attributes' in obj:
             for (k, v) in obj["attributes"].items():
-                doc[k] = get_decoder(k)(v)
+                self[k] = get_decoder(k)(v)
         if 'completed' in obj:
             for (k, v) in obj['completed'].items():
-                doc._completed[k] = v
+                self._completed[k] = v
         max_id = -1
         if "annotations" in obj:
             for annotation in obj["annotations"]:
                 ann = Annotation(
-                    document=doc,
+                    document=self,
                     start=annotation["start"],
                     end=annotation["end"],
                     annotation_type=annotation["type"],
@@ -148,21 +157,15 @@ class Document(HString):
                     annotation_id=annotation["id"]
                 )
                 max_id = max(max_id, ann.annotation_id)
-                doc._annotations.add(Interval(ann.start, ann.end, ann))
+                self._annotations.add(ann.start, ann.end, ann)
                 if "relations" in obj["annotations"]:
                     for rel in obj["annotations"]:
                         ann.add_relation(target=rel["target"], type=rel["type"], relation=rel["value"])
-        doc.language().load()
-        doc._next_id = max_id + 1
-        return doc
+        self.language().load()
+        self._next_id = max_id + 1
 
     def to_json(self) -> str:
-        return json.dumps(dict([("id", self._doc_id),
-                                ("content", self.content),
-                                ("attributes", self._attributes),
-                                ("completed", self._completed),
-                                ("annotations", [a.as_dict() for a in self.annotation(annotation_type=None)])]),
-                          default=default)
+        return json.dumps(self.to_dict(), default=default)
 
     def to_dict(self) -> typing.Dict[str, typing.Any]:
         return dict([("id", self._doc_id),

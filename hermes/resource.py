@@ -52,6 +52,7 @@ class Resource(object):
         :param params: parameters to be used in the open (specific to each implementation)
         :return: the string contents of the resource
         """
+        params=self._mkparams(params)
         encoding = params["encoding"] if "encoding" in params else "utf-8"
         compression = params["compress"] if "compress" in params else False
         if compression:
