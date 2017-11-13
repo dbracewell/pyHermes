@@ -5,6 +5,7 @@ from spacy.en import STOP_WORDS
 from hermes.core import Document
 from hermes.language import ENGLISH
 from hermes.tag.pos import PartOfSpeech, PennTreebank
+import hermes.types as type
 
 """
    Copyright 2017 David B. Bracewell
@@ -36,24 +37,27 @@ class SpacyAnnotator(object):
     def annotate(self, document: Document):
         parsed = parser(document.content)
         for token in parsed:
-            t = document.create_annotation("token", token.idx, token.idx + len(token), [
-                ("index", token.i),
-                ("lemma", token.lemma_),
-                ("prob", token.prob),
-                ("pos", PartOfSpeech.of(token.tag_))
-            ])
-            if token.head is token:
-                head_idx = None
-            else:
-                head_idx = token.head.i
-            if head_idx:
-                t.add_relation(target=head_idx, type="dep", relation=token.dep_)
+            if token.lemma_.strip() != "":
+                t = document.create_annotation("token", token.idx, token.idx + len(token), [
+                    (type.INDEX, token.i),
+                    (type.LEMMA, token.lemma_),
+                    ("prob", token.prob),
+                    (type.PART_OF_SPEECH, PartOfSpeech.of(token.tag_))
+                ])
+                if token.head is token:
+                    head_idx = None
+                else:
+                    head_idx = token.head.i
+                if head_idx:
+                    t.add_relation(target=head_idx, type="dep", relation=token.dep_)
         for entity in parsed.ents:
-            document.create_annotation("entity", entity.start_char, entity.end_char, [("entity_type", entity.label_)])
+            document.create_annotation(type.ENTITY, entity.start_char, entity.end_char,
+                                       [(type.ENTITY_TYPE, entity.label_)])
         for i, sentence in enumerate(parsed.sents):
-            document.create_annotation("sentence", sentence.start_char, sentence.end_char, [("index", i)])
+            document.create_annotation(type.SENTENCE, sentence.start_char, sentence.end_char, [(type.INDEX, i)])
         for np in parsed.noun_chunks:
-            document.create_annotation("phrase_chunk", np.start_char, np.end_char, [("pos", PennTreebank.NP)])
+            document.create_annotation(type.PHRASE_CHUNK, np.start_char, np.end_char,
+                                       [(type.PART_OF_SPEECH, PennTreebank.NP)])
 
 
 tokenizer = SpacyAnnotator()

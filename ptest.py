@@ -3,12 +3,15 @@ import hermes.core as core
 
 stack = []
 
-nfa = tre.compile("(?<NP> ~ #NOUN)")
+nfa = tre.compile("#NOUN")
 
-d = core.Document('This is a no go for you man?')
+d = core.Document('What time is it in London?')
 d.annotate('token')
 tt = d.tokens()
 index = 0
+for t in d.tokens():
+    print("%s/%s" % (t, t.pos()), end=' ')
+print()
 while index < len(tt):
     ni = nfa.match(d, index)
     if ni > 0:

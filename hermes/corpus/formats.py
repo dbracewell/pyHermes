@@ -16,19 +16,17 @@ class CorpusFormat:
             return OnePerLine(_mapping[fmt])
         return _mapping[fmt]
 
-    def read(self, source: [str, Resource], preprocessors=None, params=None) -> typing.Generator[Document, None, None]:
+    def read(self, source: [str, Resource], preprocessors=None, params=None):
         r = resource(source)
         params = to_lower(params)
         language = Language.of(params["language"]) if "language" in params else ENGLISH
         pattern = params["pattern"] if "pattern" in params else '*.*'
         recursive = params["recursive"] if "recursive" in params else True
-        if r.is_dir():
-            for d in r.children(recursive=recursive, pattern=pattern):
-                if not d.is_dir():
-                    yield self._convert(content=d.read(params), language=language, preprocessors=preprocessors,
-                                        params=params)
-        else:
-            yield self._convert(content=r.read(params), language=language, preprocessors=preprocessors, params=params)
+        generator = filter(lambda f: not f.is_dir(), r.children(recursive=recursive, pattern=pattern)) if r.is_dir() \
+            else [r]
+        for file in generator:
+            yield self._convert(content=file.read(params), language=language, preprocessors=preprocessors,
+                                params=params)
 
     def size(self, source: [str, Resource], params=None) -> int:
         r = resource(source)
@@ -69,14 +67,10 @@ class OnePerLine(CorpusFormat):
         params = to_lower(params)
         pattern = params["pattern"] if "pattern" in params else '*.*'
         recursive = params["recursive"] if "recursive" in params else True
-        if r.is_dir():
-            for d in r.children(recursive=recursive, pattern=pattern):
-                if not d.is_dir():
-                    for doc in self.__process_file(d, preprocessors=preprocessors, params=params):
-                        yield doc
-        else:
-            for doc in self.__process_file(r, preprocessors=preprocessors, params=params):
-                yield doc
+        generator = filter(lambda f: not f.is_dir(), r.children(recursive=recursive, pattern=pattern)) if r.is_dir() \
+            else [r]
+        for file in generator:
+            self.__process_file(file, preprocessors=preprocessors, params=params)
 
     def __process_file(self, f, preprocessors, params) -> typing.Generator[Document, None, None]:
         with f.reader(params) as rdr:

@@ -137,30 +137,26 @@ class Document(HString):
 
     def __read_json(self, obj):
         self.__init__(content=obj['content'])
-        if "id" in obj:
-            self._doc_id = obj["id"]
-        if 'attributes' in obj:
-            for (k, v) in obj["attributes"].items():
-                self[k] = get_decoder(k)(v)
-        if 'completed' in obj:
-            for (k, v) in obj['completed'].items():
-                self._completed[k] = v
+        self._doc_id = obj.get('id', self._doc_id)
+        for (k, v) in obj.get("attributes", {}).items():
+            self[k] = get_decoder(k)(v)
+        for (k, v) in obj.get('completed', {}).items():
+            self._completed[k] = v
         max_id = -1
-        if "annotations" in obj:
-            for annotation in obj["annotations"]:
-                ann = Annotation(
-                    document=self,
-                    start=annotation["start"],
-                    end=annotation["end"],
-                    annotation_type=annotation["type"],
-                    attributes=[(k, get_decoder(k)(v)) for k, v in annotation["attributes"].items()],
-                    annotation_id=annotation["id"]
-                )
-                max_id = max(max_id, ann.annotation_id)
-                self._annotations.add(ann.start, ann.end, ann)
-                if "relations" in obj["annotations"]:
-                    for rel in obj["annotations"]:
-                        ann.add_relation(target=rel["target"], type=rel["type"], relation=rel["value"])
+        for annotation in obj.get("annotations", []):
+            ann = Annotation(
+                document=self,
+                start=annotation["start"],
+                end=annotation["end"],
+                annotation_type=annotation["type"],
+                attributes=[(k, get_decoder(k)(v)) for k, v in annotation.get("attributes", {}).items()],
+                annotation_id=annotation["id"]
+            )
+            max_id = max(max_id, ann.annotation_id)
+            self._annotations.add(ann.start, ann.end, ann)
+            #self._annotations.add(ann)
+            for rel in annotation.get("relations", []):
+                ann.add_relation(target=rel["target"], type=rel["type"], relation=rel["value"])
         self.language().load()
         self._next_id = max_id + 1
 

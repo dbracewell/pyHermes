@@ -1,6 +1,6 @@
 import io
 from pathlib import Path
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Generator
 import urllib.request as request
 import urllib.parse as urlparse
 import zlib
@@ -52,7 +52,7 @@ class Resource(object):
         :param params: parameters to be used in the open (specific to each implementation)
         :return: the string contents of the resource
         """
-        params=self._mkparams(params)
+        params = self._mkparams(params)
         encoding = params["encoding"] if "encoding" in params else "utf-8"
         compression = params["compress"] if "compress" in params else False
         if compression:
@@ -69,6 +69,11 @@ class Resource(object):
         :return: the string contents of the resource
         """
         return self.read(params).splitlines()
+
+    def lines(self, params=None):
+        with self.reader(params) as rdr:
+            for line in rdr:
+                yield line
 
     def write(self, content: str, params=None) -> None:
         """
@@ -96,6 +101,11 @@ class Resource(object):
     def __repr__(self) -> str:
         return self.descriptor()
 
+    def __iter__(self):
+        with self.reader() as rdr:
+            for line in rdr:
+                yield line
+
     def path(self) -> str:
         """
         :return: The path of the resource
@@ -114,7 +124,7 @@ class Resource(object):
         """
         return ""
 
-    def children(self, recursive: bool = False, pattern='*.*') -> List['Resource']:
+    def children(self, recursive: bool = False, pattern='*.*', include_dirs=True):
         """
         :return: child resources
         """
@@ -187,13 +197,16 @@ class FileResource(Resource):
             return self._location.open(mode)
         return self._location.open(encoding=encoding)
 
-    def children(self, recursive: bool = False, pattern: str = '*.*') -> List['Resource']:
+    def children(self, recursive: bool = False, pattern: str = '*.*', include_dirs=True):
         for f in self._location.iterdir():
             try:
                 r = FileResource(f)
-                if recursive and r.is_dir():
-                    for cc in r.children(recursive):
-                        yield cc
+                if r.is_dir():
+                    if include_dirs and fnmatch.fnmatch(r.path(), pattern):
+                        yield r
+                    if recursive:
+                        for cc in r.children(recursive):
+                            yield cc
                 elif fnmatch.fnmatch(r.path(), pattern):
                     yield r
             except OSError:
