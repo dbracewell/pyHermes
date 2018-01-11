@@ -33,7 +33,7 @@ pipeline = Pipeline([
 ])
 
 extractor = BaseAnnotationExtractor(value_calculator=BinaryValueCalculator(), lemmatize=False, lowercase=True)
-X, Y = Corpus.disk("json_opl", source="/home/dbb/annotated2.json_opl").to_x_y(extractor, 'AUTHOR_AGE')
+X, Y = Corpus.disk("json_opl", source="/home/ik/docs.json").to_x_y(extractor, 'AUTHOR_AGE')
 
 # class ldaExtractor(Extractor):
 #     def extract(self, hstr):

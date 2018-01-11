@@ -1,11 +1,13 @@
 import re
 
-from spacy.en import English as enlp
-from spacy.en import STOP_WORDS
+import spacy
+from spacy.lang.en import English
+from spacy.lang.en import STOP_WORDS
+
+import hermes.types as type
 from hermes.core import Document
 from hermes.language import ENGLISH
 from hermes.tag.pos import PartOfSpeech, PennTreebank
-import hermes.types as type
 
 """
    Copyright 2017 David B. Bracewell
@@ -23,7 +25,7 @@ import hermes.types as type
    limitations under the License.
 """
 
-parser = enlp()
+parser = nlp = spacy.load('en')
 stopwords = set(STOP_WORDS)
 for sw in ['say', 'have', 'get', 'good', '\'s', 'Mr', 'be', 'said', 'says', 'saying']:
     stopwords.add(sw)

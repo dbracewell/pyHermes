@@ -1,4 +1,4 @@
-from .formats import CorpusFormat
+from hermes.corpus.formats import CorpusFormat
 from hermes.core import Document
 from hermes.resource import Resource
 import hermes.ml.featurizer as ml
@@ -20,7 +20,7 @@ class Corpus:
     def disk(fmt: [str, CorpusFormat], source: [str, Resource] = None, preprocessors=None, params=None) -> 'Corpus':
         return FileCorpus(fmt=fmt, source=source, preprocessors=preprocessors, params=params)
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Generator[Document, None, None]:
         for doc in self.generator():
             yield doc
 
@@ -38,6 +38,7 @@ class Corpus:
         y = []
         cnt = 0
         for doc in self:
+            doc.annotate('token')
             x.append(featurizer.extract(doc))
             if label_attr:
                 y.append(doc[label_attr])
@@ -65,8 +66,10 @@ class FileCorpus(Corpus):
                  params=None):
         super().__init__(fmt, source=source, preprocessors=preprocessors, params=params)
 
-    def generator(self) -> typing.Generator[Document, None, None]:
-        return self._fmt.read(source=self._source, preprocessors=self._preprocessors, params=self._params)
+    def generator(self):
+        for doc in self._fmt.read(source=self._source, preprocessors=self._preprocessors, params=self._params):
+            if doc:
+                return doc
 
     def cache(self) -> 'Corpus':
         mem = MemoryCorpus(fmt=self._fmt)
@@ -76,3 +79,19 @@ class FileCorpus(Corpus):
 
     def __len__(self):
         return self._fmt.size(self._source, self._params)
+
+
+if __name__ == "__main__":
+    from hermes.util.timer import Timer
+
+    timer = Timer(started=True)
+    tokens = 0
+    with open("etrain.json_opl", "w") as out_file:
+        corpus = Corpus.disk("json_opl", source="/home/ik/corpus/personality_cafe/extroverts.json_opl")
+        for doc in corpus:
+            doc.annotate('token')
+            # print(doc.to_json(), file=out_file)
+            tokens += doc.token_length()
+    timer.stop()
+    print(timer)
+    print((tokens / timer.elapsed_seconds()))

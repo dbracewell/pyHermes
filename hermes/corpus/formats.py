@@ -62,7 +62,7 @@ class OnePerLine(CorpusFormat):
                     size += 1
         return size
 
-    def read(self, source: [str, Resource], preprocessors=None, params=None) -> typing.Generator[Document, None, None]:
+    def read(self, source: [str, Resource], preprocessors=None, params=None):
         r = resource(source)
         params = to_lower(params)
         pattern = params["pattern"] if "pattern" in params else '*.*'
@@ -70,12 +70,12 @@ class OnePerLine(CorpusFormat):
         generator = filter(lambda f: not f.is_dir(), r.children(recursive=recursive, pattern=pattern)) if r.is_dir() \
             else [r]
         for file in generator:
-            self.__process_file(file, preprocessors=preprocessors, params=params)
+            yield self.__process_file(f=file, preprocessors=preprocessors, params=params)
 
-    def __process_file(self, f, preprocessors, params) -> typing.Generator[Document, None, None]:
+    def __process_file(self, f, preprocessors, params):
         with f.reader(params) as rdr:
             for line in rdr:
-                if len(line.rstrip()) > 0:
+                if len(line.strip()) > 0:
                     for d in self._sub.read(resource("string:" + line), preprocessors=preprocessors, params=params):
                         yield d
 
